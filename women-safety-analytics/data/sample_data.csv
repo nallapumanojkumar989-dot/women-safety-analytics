@@ -1,0 +1,58 @@
+State,City,Year,Rape,Kidnapping_and_Abduction,Dowry_Deaths,Assault_on_Women,Cruelty_by_Husband_or_Relatives,Sexual_Harassment,Cyber_Crime,Other_Crimes_Against_Women,Total_Crime_Against_Women,Population_Lakhs,Latitude,Longitude,District
+Delhi,Delhi,2021,1297,3948,110,2022,4674,875,345,711,13982,163.5,28.6139,77.209,Delhi District
+Delhi,Delhi,2022,1204,4015,127,2110,4847,912,380,563,14158,163.5,28.6139,77.209,Delhi District
+Delhi,Delhi,2023,1236,4120,119,2085,4912,890,415,470,14247,163.5,28.6139,77.209,Delhi District
+Maharashtra,Mumbai,2021,888,1538,11,1941,841,302,172,150,5543,184.1,19.076,72.8777,Mumbai District
+Maharashtra,Mumbai,2022,922,1740,14,2080,915,318,195,192,6176,184.1,19.076,72.8777,Mumbai District
+Maharashtra,Mumbai,2023,945,1812,13,2145,960,330,210,208,6423,184.1,19.076,72.8777,Mumbai District
+Karnataka,Bengaluru,2021,117,570,44,1025,923,198,142,108,3127,85.0,12.9716,77.5946,Bengaluru District
+Karnataka,Bengaluru,2022,148,795,48,1310,1140,235,165,83,3924,85.0,12.9716,77.5946,Bengaluru District
+Karnataka,Bengaluru,2023,162,870,46,1420,1260,250,178,75,4261,85.0,12.9716,77.5946,Bengaluru District
+Telangana,Hyderabad,2021,116,212,23,640,1380,110,75,36,2592,68.1,17.385,78.4867,Hyderabad District
+Telangana,Hyderabad,2022,132,258,28,725,1620,135,92,39,3029,68.1,17.385,78.4867,Hyderabad District
+Telangana,Hyderabad,2023,140,275,26,750,1680,142,98,36,3147,68.1,17.385,78.4867,Hyderabad District
+Rajasthan,Jaipur,2021,512,680,38,650,1045,120,45,115,3205,30.7,26.9124,75.7873,Jaipur District
+Rajasthan,Jaipur,2022,548,730,42,710,1140,135,52,122,3479,30.7,26.9124,75.7873,Jaipur District
+Rajasthan,Jaipur,2023,560,765,40,735,1180,140,58,112,3590,30.7,26.9124,75.7873,Jaipur District
+Uttar Pradesh,Lucknow,2021,142,715,56,520,1080,195,62,72,2842,28.2,26.8467,80.9462,Lucknow District
+Uttar Pradesh,Lucknow,2022,138,730,52,510,1075,188,70,68,2831,28.2,26.8467,80.9462,Lucknow District
+Uttar Pradesh,Lucknow,2023,145,755,54,535,1095,192,74,60,2910,28.2,26.8467,80.9462,Lucknow District
+Uttar Pradesh,Kanpur,2021,118,460,48,380,680,115,28,46,1875,29.2,26.4499,80.3319,Kanpur District
+Uttar Pradesh,Kanpur,2022,125,490,51,405,715,122,32,40,1980,29.2,26.4499,80.3319,Kanpur District
+Uttar Pradesh,Kanpur,2023,130,510,49,420,735,128,35,38,2045,29.2,26.4499,80.3319,Kanpur District
+Gujarat,Ahmedabad,2021,185,340,6,310,725,82,24,40,1712,63.6,23.0225,72.5714,Ahmedabad District
+Gujarat,Ahmedabad,2022,198,365,8,335,760,88,28,38,1820,63.6,23.0225,72.5714,Ahmedabad District
+Gujarat,Ahmedabad,2023,205,380,7,350,790,92,31,40,1895,63.6,23.0225,72.5714,Ahmedabad District
+Maharashtra,Pune,2021,210,380,8,415,280,65,32,28,1418,50.5,18.5204,73.8567,Pune District
+Maharashtra,Pune,2022,235,425,10,460,315,72,38,25,1580,50.5,18.5204,73.8567,Pune District
+Maharashtra,Pune,2023,248,450,9,485,335,78,42,28,1675,50.5,18.5204,73.8567,Pune District
+West Bengal,Kolkata,2021,11,285,3,310,840,195,22,117,1783,141.1,22.5726,88.3639,Kolkata District
+West Bengal,Kolkata,2022,11,260,2,295,810,180,25,107,1690,141.1,22.5726,88.3639,Kolkata District
+West Bengal,Kolkata,2023,12,272,3,305,825,185,28,90,1720,141.1,22.5726,88.3639,Kolkata District
+Madhya Pradesh,Indore,2021,195,340,14,480,480,75,28,38,1650,21.7,22.7196,75.8577,Indore District
+Madhya Pradesh,Indore,2022,210,365,16,510,505,80,32,22,1740,21.7,22.7196,75.8577,Indore District
+Madhya Pradesh,Indore,2023,220,385,15,530,525,84,35,16,1810,21.7,22.7196,75.8577,Indore District
+Gujarat,Surat,2021,135,270,4,185,440,45,18,23,1120,45.8,21.1702,72.8311,Surat District
+Gujarat,Surat,2022,150,305,5,210,480,50,22,18,1240,45.8,21.1702,72.8311,Surat District
+Gujarat,Surat,2023,160,320,5,225,505,54,25,16,1310,45.8,21.1702,72.8311,Surat District
+Bihar,Patna,2021,68,340,32,140,390,45,12,23,1050,20.5,25.5941,85.1376,Patna District
+Bihar,Patna,2022,75,380,35,160,440,50,15,25,1180,20.5,25.5941,85.1376,Patna District
+Bihar,Patna,2023,80,405,34,172,465,52,18,24,1250,20.5,25.5941,85.1376,Patna District
+Uttar Pradesh,Ghaziabad,2021,85,380,34,210,430,55,20,16,1230,23.6,28.6692,77.4538,Ghaziabad District
+Uttar Pradesh,Ghaziabad,2022,95,420,38,235,470,60,24,8,1350,23.6,28.6692,77.4538,Ghaziabad District
+Uttar Pradesh,Ghaziabad,2023,102,445,36,248,495,64,28,2,1420,23.6,28.6692,77.4538,Ghaziabad District
+Maharashtra,Nagpur,2021,165,285,6,380,185,48,18,23,1110,24.1,21.1458,79.0882,Nagpur District
+Maharashtra,Nagpur,2022,178,310,7,410,198,52,22,13,1190,24.1,21.1458,79.0882,Nagpur District
+Maharashtra,Nagpur,2023,188,330,7,435,210,55,25,10,1260,24.1,21.1458,79.0882,Nagpur District
+Tamil Nadu,Chennai,2021,62,125,8,310,215,75,24,21,840,86.5,13.0827,80.2707,Chennai District
+Tamil Nadu,Chennai,2022,68,138,9,330,228,80,22,15,890,86.5,13.0827,80.2707,Chennai District
+Tamil Nadu,Chennai,2023,72,145,8,348,240,85,25,12,935,86.5,13.0827,80.2707,Chennai District
+Kerala,Kochi,2021,54,42,1,245,180,62,18,18,620,21.2,9.9312,76.2673,Kochi District
+Kerala,Kochi,2022,61,48,1,270,195,68,22,15,680,21.2,9.9312,76.2673,Kochi District
+Kerala,Kochi,2023,65,52,1,285,205,72,24,11,715,21.2,9.9312,76.2673,Kochi District
+Kerala,Kozhikode,2021,42,28,0,195,145,48,12,10,480,20.3,11.2588,75.7804,Kozhikode District
+Kerala,Kozhikode,2022,48,32,1,210,158,52,14,5,520,20.3,11.2588,75.7804,Kozhikode District
+Kerala,Kozhikode,2023,52,35,0,222,168,55,15,3,550,20.3,11.2588,75.7804,Kozhikode District
+Tamil Nadu,Coimbatore,2021,22,35,2,110,78,28,8,7,290,21.5,11.0168,76.9558,Coimbatore District
+Tamil Nadu,Coimbatore,2022,25,38,2,120,85,30,10,5,315,21.5,11.0168,76.9558,Coimbatore District
+Tamil Nadu,Coimbatore,2023,28,40,2,125,90,32,10,3,330,21.5,11.0168,76.9558,Coimbatore District
