@@ -1,0 +1,16 @@
+﻿=== MODEL METRICS ===
+Best Model: Ridge Regression
+Test MAE: 2.56
+Test RMSE: 3.73
+Test R2: 0.9345
+Train years: [2014, 2015, 2016, 2017, 2018, 2019, 2020]
+Test years: [2021]
+Train records: 469
+Test records: 67
+
+Sample city: Agra  |  Latest year in data: 2022
+
+2023: Score=34.7, Risk=LOW, Reliability=93.2%
+2027: Score=34.9, Risk=LOW, Reliability=78.9%
+2030: Score=34.9, Risk=LOW, Reliability=65.8%
+2035: Score=34.9, Risk=LOW, Reliability=41.1%

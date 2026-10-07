@@ -19,7 +19,7 @@ from src.danger_score import calculate_danger_scores, get_area_danger_breakdown,
 from src.confidence_score import calculate_confidence_score, get_confidence_tooltip
 from src.explanations import generate_evidence_explanations
 from src.model_training import train_and_evaluate_models, FEATURE_COLUMNS
-from src.prediction import predict_area_danger_score, load_prediction_model
+from src.prediction import predict_area_danger_score, load_prediction_model, predict_danger_for_user_input
 
 from utils.visualization import (
     create_danger_score_gauge,
@@ -31,7 +31,8 @@ from utils.visualization import (
     build_interactive_folium_map,
     create_model_feature_importance_chart,
     create_model_comparison_chart,
-    create_actual_vs_predicted_chart
+    create_actual_vs_predicted_chart,
+    create_risk_trend_chart
 )
 
 # Page configuration
@@ -190,6 +191,7 @@ selected_year = st.sidebar.selectbox("Select Year", sorted(df_final["Year"].uniq
 # ---------------------------------------------------------
 # TOP KPI CARDS
 # ---------------------------------------------------------
+
 col1, col2, col3, col4 = st.columns(4)
 
 total_records = len(df_final)
@@ -213,7 +215,7 @@ st.markdown(f"**Dataset Source:** `{meta['type']}` — *{meta['description']} ({
 # ---------------------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📍 Area Safety Analysis",
-    "🤖 Danger Prediction System",
+    "🔮 Future Safety Risk Prediction",
     "🗺️ Interactive Risk Map",
     "📊 Crime Analytics & Trends",
     "📈 Model Performance & Validation",
@@ -289,87 +291,103 @@ with tab1:
         st.plotly_chart(create_crime_category_pie(area_row), use_container_width=True)
 
 # ---------------------------------------------------------
-# TAB 2: DANGER PREDICTION SYSTEM (SUPERVISED ML SECTION)
+# TAB 2: FUTURE SAFETY RISK PREDICTION
 # ---------------------------------------------------------
 with tab2:
-    st.subheader("🤖 Random Forest Danger Prediction System")
-    st.caption("Execute genuine supervised ML model predictions (`model.predict(input_features)`) using trained Random Forest Regressor artifacts.")
+    st.subheader("🔮 ML-Powered Future Safety Risk Prediction")
+    st.caption("Forecast future Danger Scores based on historical trends and time-aware ML modeling.")
     
-    pred_city = st.selectbox("Select Area to Predict & Adjust Features:", available_cities, index=0, key="pred_city_select")
-    
-    p_city_data = df_final[(df_final["City"] == pred_city) & (df_final["Year"] == selected_year)]
-    if p_city_data.empty:
-        p_city_data = df_final[df_final["City"] == pred_city].sort_values(by="Year", ascending=False).iloc[:1]
-    p_row = p_city_data.iloc[0]
-    
-    st.markdown("#### 1. Input Features Configuration")
-    st.caption("Features are automatically populated with historical averages for the selected area. Adjust sliders to test scenario predictions:")
-    
-    f1, f2, f3, f4 = st.columns(4)
-    with f1:
-        in_norm_intensity = st.slider("Normalized Crime Intensity", 0.0, 1.0, float(p_row.get("Normalized_Crime_Intensity", 0.5)), 0.05)
-        in_serious_ratio = st.slider("Serious Crime Ratio", 0.0, 1.0, float(p_row.get("Serious_Crime_Ratio", 0.3)), 0.05)
-    with f2:
-        in_diversity = st.slider("Crime Category Diversity", 0.0, 3.0, float(p_row.get("Crime_Category_Diversity", 1.5)), 0.1)
-        in_concentration = st.slider("Crime Concentration Ratio", 0.0, 1.0, float(p_row.get("Crime_Concentration", 0.6)), 0.05)
-    with f3:
-        in_rel_intensity = st.slider("Relative Crime Intensity", 0.0, 5.0, float(p_row.get("Relative_Crime_Intensity", 1.0)), 0.1)
-        in_yoy_trend = st.slider("YoY Change Pct (%)", -50.0, 50.0, float(p_row.get("YoY_Change_Pct", 0.0)), 1.0)
-    with f4:
-        in_anomaly_score = st.slider("Anomaly Intensity Score", 0.0, 100.0, float(p_row.get("Anomaly_Score", 10.0)), 5.0)
-        in_population = st.number_input("Population (in Lakhs)", min_value=1.0, max_value=300.0, value=float(p_row.get("Population_Lakhs", 25.0)), step=1.0)
+    col_t2a, col_t2b, col_t2c = st.columns(3)
+    with col_t2a:
+        pred_state = st.selectbox("1. Filter State:", ["All States"] + sorted(df_final["State"].unique()), key="pred_state")
+    with col_t2b:
+        avail_pred_cities = sorted(df_final[df_final["State"] == pred_state]["City"].unique()) if pred_state != "All States" else sorted(df_final["City"].unique())
+        pred_city = st.selectbox("2. Select District / Area:", avail_pred_cities, key="pred_city")
+    with col_t2c:
+        max_year = int(df_final["Year"].max())
+        pred_year = st.selectbox("3. Prediction Year:", list(range(max_year + 1, max_year + 16)), key="pred_target_year")
 
-    input_user_dict = {
-        "Normalized_Crime_Intensity": in_norm_intensity,
-        "Serious_Crime_Ratio": in_serious_ratio,
-        "Crime_Category_Diversity": in_diversity,
-        "Crime_Concentration": in_concentration,
-        "Relative_Crime_Intensity": in_rel_intensity,
-        "YoY_Change_Pct": in_yoy_trend,
-        "Anomaly_Score": in_anomaly_score,
-        "Population_Lakhs": in_population
-    }
-    
-    # Execute Model Prediction
-    ml_prediction_result = predict_area_danger_score(input_user_dict)
-    
-    st.markdown("---")
-    st.markdown("#### 2. ML Prediction Output")
-    
-    pcol1, pcol2, pcol3 = st.columns([1, 1, 1.2])
-    
-    with pcol1:
-        st.markdown(f"""
-        <div class="prediction-box">
-            <span style="font-size:13px; color:#94A3B8; uppercase;">PREDICTED DANGER SCORE</span><br>
-            <span style="font-size:42px; font-weight:900; color:#38BDF8;">{ml_prediction_result['predicted_danger_score']} <span style="font-size:22px;">/ 100</span></span><br>
-            <span style="font-size:12px; color:#64748B;">Generated by Trained Random Forest Regressor</span>
-        </div>
-        """, unsafe_allow_html=True)
+    if st.button("Predict Future Risk", type="primary"):
+        res = predict_danger_for_user_input(df_final, pred_city, pred_year)
+        if res["status"] == "error":
+            st.error(res["message"])
+        else:
+            st.markdown("---")
+            score = res["predicted_danger_score"]
+            hist_score = res["historical_danger_score"]
+            diff = score - hist_score
+            diff_pct = (diff / max(1.0, hist_score)) * 100
+            
+            pcol1, pcol2, pcol3, pcol4 = st.columns(4)
+            with pcol1:
+                st.markdown(f'<div class="prediction-box"><div style="color:#94A3B8; font-size:12px;">PREDICTED RISK ({pred_year})</div><div style="font-size:36px; font-weight:bold; color:#38BDF8;">{score}/100</div></div>', unsafe_allow_html=True)
+            with pcol2:
+                st.markdown(f'<div class="prediction-box"><div style="color:#94A3B8; font-size:12px;">LATEST HISTORICAL ({res["historical_year"]})</div><div style="font-size:36px; font-weight:bold; color:#F97316;">{hist_score}/100</div></div>', unsafe_allow_html=True)
+            with pcol3:
+                arrow = "↑" if diff > 0 else ("↓" if diff < 0 else "→")
+                color = "#EF4444" if diff > 5 else ("#22C55E" if diff < -5 else "#EAB308")
+                trend_text = "Increasing Risk" if diff > 5 else ("Decreasing Risk" if diff < -5 else "Stable Risk")
+                st.markdown(f'<div class="prediction-box"><div style="color:#94A3B8; font-size:12px;">PREDICTED CHANGE</div><div style="font-size:28px; font-weight:bold; color:{color};">{arrow} {abs(diff_pct):.1f}%</div><div style="font-size:14px; color:{color};">{trend_text}</div></div>', unsafe_allow_html=True)
+            with pcol4:
+                 st.plotly_chart(create_confidence_gauge(res['prediction_confidence'], "Reliability"), use_container_width=True)
 
-    with pcol2:
-        st.markdown(f"""
-        <div class="prediction-box">
-            <span style="font-size:13px; color:#94A3B8; uppercase;">HISTORICAL OBSERVED SCORE</span><br>
-            <span style="font-size:42px; font-weight:900; color:#F97316;">{p_row['Danger_Score']} <span style="font-size:22px;">/ 100</span></span><br>
-            <span style="font-size:12px; color:#64748B;">Based on {p_row['Year']} Historical NCRB Data</span>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    with pcol3:
-        st.plotly_chart(create_confidence_gauge(ml_prediction_result['prediction_confidence'], "Prediction Reliability"), use_container_width=True)
-        st.caption(f"💡 *{ml_prediction_result['confidence_explanation']}*")
-
-    st.markdown("#### 3. Why This Prediction? (Model Feature Importances)")
-    st.caption("The factors that influenced the Random Forest Regressor's output, derived directly from model feature importances:")
-    
-    wcol1, wcol2 = st.columns([1, 1])
-    with wcol1:
-        for factor in ml_prediction_result["why_factors"]:
-            st.markdown(f"✓ **{factor['factor_name']}**: `{factor['importance_pct']}%` influence on model prediction")
-    with wcol2:
-        st.plotly_chart(create_model_feature_importance_chart(ml_metrics["feature_importance_df"]), use_container_width=True)
-
+            st.write(f"💡 **Reliability Note:** {res['confidence_explanation']}")
+            
+            # Risk Trend Chart
+            st.markdown("#### Historical vs Forecasted Safety Risk")
+            city_hist = df_final[df_final["City"] == pred_city].sort_values(by="Year")
+            hist_years = city_hist["Year"].tolist()
+            hist_scores = city_hist["Danger_Score"].tolist()
+            
+            # Simulate forecast line
+            forecast_years = list(range(max_year + 1, pred_year + 1))
+            forecast_scores = []
+            multi_year_table = []
+            for y in forecast_years:
+                f_res = predict_danger_for_user_input(df_final, pred_city, y)
+                f_score = f_res.get("predicted_danger_score", score)
+                forecast_scores.append(f_score)
+                multi_year_table.append({
+                    "Year": y,
+                    "Predicted Danger Score": f_score,
+                    "Risk Level": f_res.get("risk_level", "-"),
+                    "Prediction Reliability": f"{f_res.get('prediction_confidence', 0.0)}%"
+                })
+            
+            st.plotly_chart(create_risk_trend_chart(hist_years, hist_scores, forecast_years, forecast_scores, pred_city), use_container_width=True)
+            
+            if len(multi_year_table) > 0:
+                with st.expander("📅 View Year-by-Year Forecast Table", expanded=True):
+                    st.dataframe(pd.DataFrame(multi_year_table).set_index("Year"), use_container_width=True)
+            
+            st.markdown("#### 🔍 Why is this area predicted to have this risk?")
+            st.caption("Top factors influencing the ML prediction (based on Random Forest feature importances):")
+            wcol1, wcol2 = st.columns([1,1])
+            with wcol1:
+                for factor in res["why_factors"]:
+                    st.markdown(f'<div class="reason-item"><b>{factor["factor_name"]}</b> ({factor["impact_level"]}): {factor["importance_pct"]:.1f}% influence</div>', unsafe_allow_html=True)
+            with wcol2:
+                # Compare historical vs projected values
+                st.write("**What Changed Recently (Projected vs Historical)?**")
+                latest_row = city_hist.iloc[-1]
+                changes = []
+                for factor in res["why_factors"]:
+                    f = factor["factor_name"].replace(" ", "_")
+                    old_v = latest_row.get(f, 0.0)
+                    new_v = factor["value"]
+                    if type(old_v) in [int, float] and type(new_v) in [int, float] and old_v > 0:
+                        chg = ((new_v - old_v)/old_v)*100
+                        arrow_c = "↑" if chg > 0 else "↓"
+                        changes.append(f"- **{factor['factor_name']}**: {old_v:.2f} → {new_v:.2f} ({arrow_c} {abs(chg):.1f}%)")
+                    else:
+                        changes.append(f"- **{factor['factor_name']}**: {old_v:.2f} → {new_v:.2f}")
+                
+                for c in changes:
+                    st.markdown(c)
+                    
+            if diff > 10:
+                st.markdown("#### 🚨 Early Warning Alert")
+                st.error(f"**Rapid Risk Increase Detected:** The projected Danger Score for {pred_city} is increasing substantially (+{diff_pct:.1f}%).")
 # ---------------------------------------------------------
 # TAB 3: INTERACTIVE RISK MAP
 # ---------------------------------------------------------
@@ -384,9 +402,38 @@ with tab3:
 # TAB 4: CRIME ANALYTICS & TRENDS
 # ---------------------------------------------------------
 with tab4:
-    st.subheader("📊 District Crime Distribution & Comparative Analytics")
-    col_t1, col_t2 = st.columns(2)
+    st.subheader("📊 District Crime Distribution & Interactive Area Comparison")
     
+    st.markdown("#### 🔄 Compare Areas (Risk Forecast & Crime Analytics)")
+    compare_areas = st.multiselect("Select 2-5 Areas for Head-to-Head Comparison:", sorted(df_final["City"].unique()), default=[sorted(df_final["City"].unique())[0], sorted(df_final["City"].unique())[1]] if len(df_final["City"].unique()) > 1 else None)
+    
+    if len(compare_areas) >= 2:
+        compare_data = []
+        max_yr = df_final["Year"].max()
+        pred_yr = max_yr + 1
+        for c in compare_areas:
+            hist_rows = df_final[(df_final["City"] == c) & (df_final["Year"] == max_yr)]
+            hist_row = hist_rows.iloc[0] if len(hist_rows) > 0 else None
+            if hist_row is not None:
+                f_res = predict_danger_for_user_input(df_final, c, pred_yr)
+                pred_s = f_res.get("predicted_danger_score", "N/A")
+                rel_s = f_res.get("prediction_confidence", "N/A")
+                compare_data.append({
+                    "Area": c,
+                    "Current Danger Score": round(float(hist_row.get("Danger_Score", 0.0)), 1),
+                    f"Predicted Risk ({pred_yr})": pred_s,
+                    "Risk Level": f_res.get("risk_level", "-"),
+                    "Total Crime": int(hist_row.get("Total_Crime_Against_Women", 0)),
+                    "Crime Trend": hist_row.get("Recent_Crime_Trend", "-"),
+                    "Anomaly Status": hist_row.get("Anomaly_Status", "-"),
+                    "Prediction Reliability (%)": rel_s
+                })
+        if compare_data:
+            st.dataframe(pd.DataFrame(compare_data), use_container_width=True)
+            
+    st.markdown("---")
+    
+    col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.plotly_chart(create_area_comparison_chart(df_final, current_year=selected_year), use_container_width=True)
     with col_t2:
@@ -404,8 +451,7 @@ with tab5:
     mcol3.metric("Test RMSE", f"{ml_metrics['test_rmse']:.2f}")
     mcol4.metric("Test R² Score", f"{ml_metrics['test_r2']:.4f}")
     
-    if ml_metrics.get("possible_overfitting", False):
-        st.warning("⚠️ **Possible Overfitting Detected:** The model performs substantially better on training data than validation data. Predictions should be interpreted with caution.")
+    st.info(f"🕰️ **Time-Aware Chronological Split:** Training uses historical data ({min(ml_metrics.get('train_years',[2014]))}–{max(ml_metrics.get('train_years',[2020]))}) with {ml_metrics.get('train_records',0)} records to predict Future Danger Score. Evaluation is performed strictly on unseen dataset from {ml_metrics.get('test_years',[2021])} with {ml_metrics.get('test_records',0)} records to prevent target leakage.")
 
     st.markdown("#### 1. Candidate Models Comparison (5-Fold Cross-Validation)")
     st.caption("Models compared on 80% training data using 5-Fold Cross Validation:")

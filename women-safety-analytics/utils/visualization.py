@@ -305,3 +305,35 @@ def build_interactive_folium_map(df, selected_year=2022):
         ).add_to(m)
 
     return m
+
+def create_risk_trend_chart(hist_years, hist_scores, pred_years, pred_scores, city_name):
+    """
+    Creates a line chart comparing Historical vs Forecasted Safety Risk.
+    """
+    fig = go.Figure()
+    if len(hist_years) > 0:
+        fig.add_trace(go.Scatter(
+            x=hist_years, y=hist_scores,
+            mode='lines+markers', name='Historical Risk',
+            line=dict(color='#F97316', width=3, shape='spline'), marker=dict(size=8)
+        ))
+        if len(pred_years) > 0:
+            fig.add_trace(go.Scatter(
+                x=[hist_years[-1], pred_years[0]], y=[hist_scores[-1], pred_scores[0]],
+                mode='lines', showlegend=False, line=dict(color='#38BDF8', width=3, dash='dot')
+            ))
+    if len(pred_years) > 0:
+        fig.add_trace(go.Scatter(
+            x=pred_years, y=pred_scores,
+            mode='lines+markers', name='Forecasted Risk',
+            line=dict(color='#38BDF8', width=3, dash='dot'), marker=dict(size=8, symbol='diamond')
+        ))
+    fig.update_layout(
+        title=f"Historical vs Forecasted Safety Risk for {city_name}",
+        xaxis_title="Year", yaxis_title="Danger Score",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        margin=dict(l=40, r=40, t=60, b=40),
+        **DARK_THEME_LAYOUT
+    )
+    fig.update_yaxes(range=[0, 105])
+    return fig

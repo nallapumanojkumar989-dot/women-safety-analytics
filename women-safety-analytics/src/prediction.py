@@ -130,11 +130,11 @@ def predict_danger_for_user_input(df_full, city_name, target_year):
     max_hist_year = int(df_full["Year"].max())
     min_hist_year = int(df_full["Year"].min())
     
-    if target_year < min_hist_year or target_year > (max_hist_year + 5):
+    if target_year < min_hist_year:
         return {
             "status": "error",
             "error_type": "invalid_year",
-            "message": f"⚠️ Prediction is not available for year {target_year} because the model does not have sufficient historical data ({min_hist_year}–{max_hist_year}) to make a reliable prediction."
+            "message": f"⚠️ Prediction is not available for year {target_year}. Please select a future year after the latest historical year ({max_hist_year})."
         }
 
     # 3. Retrieve Historical Records for Selected City
@@ -163,19 +163,39 @@ def predict_danger_for_user_input(df_full, city_name, target_year):
 
     available_features = metrics.get("available_features", FEATURE_COLUMNS)
     
-    # Project trend features forward if target_year is in future
+    # -------------------------------------------------------
+    # Recursive time-aware feature projection (no leakage)
+    # Features are projected forward using historical mean
+    # growth and a dampening factor to model regression to mean
+    # -------------------------------------------------------
+    hist_yoy_mean = float(city_df["YoY_Change_Pct"].mean()) if "YoY_Change_Pct" in city_df.columns else 0.0
+    latest_yoy = float(latest_row.get("YoY_Change_Pct", 0.0))
+
     input_features_dict = {}
     for feat in available_features:
         base_val = float(latest_row.get(feat, 0.0))
         if years_ahead > 0:
-            if feat == "YoY_Change_Pct":
-                hist_yoy = city_df["YoY_Change_Pct"].mean() if "YoY_Change_Pct" in city_df.columns else 0.0
-                input_features_dict[feat] = round(float(hist_yoy), 2)
+            if feat == "Population_Lakhs":
+                # Modest 1% annual population growth assumption
+                input_features_dict[feat] = round(base_val * (1.01 ** years_ahead), 2)
+            elif feat == "YoY_Change_Pct":
+                # Dampen YoY toward zero (regression to mean) over time
+                dampen_rate = 0.80 ** (years_ahead - 1)
+                projected_yoy = hist_yoy_mean * dampen_rate
+                input_features_dict[feat] = round(float(projected_yoy), 3)
             elif feat in ["Normalized_Crime_Intensity", "Relative_Crime_Intensity"]:
-                yoy_rate = float(latest_row.get("YoY_Change_Pct", 0.0)) / 100.0
-                proj_val = base_val * ((1.0 + (yoy_rate * 0.5)) ** years_ahead)
-                input_features_dict[feat] = round(float(np.clip(proj_val, 0.0, 5.0)), 3)
+                # Compound growth with dampening — each year the growth rate shrinks
+                proj_val = base_val
+                for y in range(1, years_ahead + 1):
+                    effective_yoy = latest_yoy * (0.80 ** (y - 1)) / 100.0
+                    proj_val = proj_val * (1.0 + effective_yoy * 0.5)
+                input_features_dict[feat] = round(float(np.clip(proj_val, 0.0, 5.0)), 4)
+            elif feat == "Anomaly_Score":
+                # Anomaly scores revert toward zero over time
+                revert_val = base_val * (0.90 ** years_ahead)
+                input_features_dict[feat] = round(float(np.clip(revert_val, 0.0, 100.0)), 2)
             else:
+                # Structural features (Serious_Crime_Ratio, etc.) stay stable
                 input_features_dict[feat] = base_val
         else:
             input_features_dict[feat] = base_val
@@ -197,8 +217,16 @@ def predict_danger_for_user_input(df_full, city_name, target_year):
     base_conf = max(70.0, min(96.0, test_r2 * 100))
     error_penalty = min(10.0, test_mae * 1.2)
     
-    future_discount = years_ahead * 2.5
-    prediction_confidence = round(float(np.clip(base_conf - error_penalty - future_discount, 65.0, 98.0)), 1)
+    # Reliability decreases non-linearly with forecast horizon
+    # 1 year ahead: small penalty; 13+ years: large penalty
+    future_discount = (years_ahead ** 1.25) * 2.2
+    num_hist_obs = len(city_df)
+    # Bonus for more historical data (max +5%)
+    data_coverage_bonus = min(5.0, num_hist_obs * 0.6)
+    prediction_confidence = round(float(np.clip(
+        base_conf - error_penalty - future_discount + data_coverage_bonus,
+        20.0, 98.0
+    )), 1)
 
     # 8. Feature Importance Factors ("Why is this area predicted to have this score?")
     feat_imp_df = metrics.get("feature_importance_df", None)

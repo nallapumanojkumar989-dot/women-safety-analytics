@@ -2,7 +2,7 @@ import os
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split, KFold, cross_validate
+from sklearn.model_selection import KFold, cross_validate
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
@@ -19,47 +19,67 @@ FEATURE_COLUMNS = [
     "Population_Lakhs"
 ]
 
-TARGET_COLUMN = "Danger_Score"
+def prepare_time_series_data(df):
+    """
+    Shifts the 'Danger_Score' target variable by -1 year for each City to predict NEXT year's score.
+    Prevents target leakage by predicting Future Danger Score based on Current Features.
+    """
+    df_ts = df.copy().sort_values(by=["City", "Year"])
+    df_ts["Future_Danger_Score"] = df_ts.groupby("City")["Danger_Score"].shift(-1)
+    return df_ts
 
 def train_and_evaluate_models(df):
     """
-    Trains, compares, and evaluates supervised ML regression models to predict Danger Score.
-    Uses 5-Fold Cross-Validation, prevents data leakage, detects overfitting, and saves model artifacts.
+    Trains, compares, and evaluates supervised ML regression models to predict Future Danger Score.
+    Uses Chronological Split.
     """
-    df_ml = df.copy()
+    df_ts = prepare_time_series_data(df)
     
-    # Verify input feature columns
-    available_features = [c for c in FEATURE_COLUMNS if c in df_ml.columns]
-    if TARGET_COLUMN not in df_ml.columns:
-        raise ValueError("Target column 'Danger_Score' not found in dataframe.")
+    available_features = [c for c in FEATURE_COLUMNS if c in df_ts.columns]
+    
+    # We will train and test only where Future_Danger_Score is not null
+    df_ml = df_ts.dropna(subset=["Future_Danger_Score"]).copy()
+    
+    # Time-aware split: latest available training year becomes TEST set, older years become TRAIN set
+    available_years = sorted(df_ml["Year"].unique())
+    if len(available_years) < 2:
+        # Fallback to random split if not enough years
+        from sklearn.model_selection import train_test_split
+        train_df, test_df = train_test_split(df_ml, test_size=0.2, random_state=42)
+    else:
+        test_year = available_years[-1]
+        train_df = df_ml[df_ml["Year"] < test_year]
+        test_df = df_ml[df_ml["Year"] == test_year]
         
-    X = df_ml[available_features].fillna(0).values
-    y = df_ml[TARGET_COLUMN].values
+        # Ensure sufficient test size, else shift test_year back
+        if len(test_df) < (0.05 * len(df_ml)) and len(available_years) > 2:
+           test_year = available_years[-2]
+           train_df = df_ml[df_ml["Year"] < test_year]
+           test_df = df_ml[df_ml["Year"] >= test_year]
+
+    train_years = train_df['Year'].unique().tolist()
+    test_years = test_df['Year'].unique().tolist()
+
+    X_train = train_df[available_features].fillna(0).values
+    y_train = train_df["Future_Danger_Score"].values
     
-    # 80/20 Train/Test Split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, random_state=42
-    )
+    X_test = test_df[available_features].fillna(0).values
+    y_test = test_df["Future_Danger_Score"].values
     
     # Scaler
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     
-    # Define Candidate Models for Comparison
+    # Define Candidate Models
     candidate_models = {
         "Random Forest Regression": RandomForestRegressor(
-            n_estimators=100,
-            max_depth=10,
-            min_samples_split=5,
-            min_samples_leaf=2,
-            random_state=42
+            n_estimators=100, max_depth=10, min_samples_split=5, min_samples_leaf=2, random_state=42
         ),
         "Linear Regression": LinearRegression(),
         "Ridge Regression": Ridge(alpha=1.0)
     }
     
-    # 5-Fold Cross-Validation
     cv = KFold(n_splits=5, shuffle=True, random_state=42)
     comparison_results = []
     trained_models = {}
@@ -69,28 +89,17 @@ def train_and_evaluate_models(df):
     best_model_obj = None
     
     for name, model in candidate_models.items():
-        # Cross-validation on training set
-        cv_scores = cross_validate(
-            model,
-            X_train_scaled,
-            y_train,
-            cv=cv,
-            scoring=['neg_mean_absolute_error', 'neg_root_mean_squared_error', 'r2']
-        )
-        
+        cv_scores = cross_validate(model, X_train_scaled, y_train, cv=cv, scoring=['neg_mean_absolute_error', 'neg_root_mean_squared_error', 'r2'])
         val_mae = -np.mean(cv_scores['test_neg_mean_absolute_error'])
         val_rmse = -np.mean(cv_scores['test_neg_root_mean_squared_error'])
         val_r2 = np.mean(cv_scores['test_r2'])
         
-        # Fit on entire training set
         model.fit(X_train_scaled, y_train)
         trained_models[name] = model
         
-        # Train MAE for overfitting check
         y_train_pred = model.predict(X_train_scaled)
         train_mae = mean_absolute_error(y_train, y_train_pred)
         
-        # Test Set Evaluation
         y_test_pred = model.predict(X_test_scaled)
         test_mae = mean_absolute_error(y_test, y_test_pred)
         test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
@@ -113,16 +122,8 @@ def train_and_evaluate_models(df):
             best_model_obj = model
 
     comparison_df = pd.DataFrame(comparison_results)
-    
-    # Selected Best Model Metrics (Random Forest)
     best_model_info = comparison_df[comparison_df["Model"] == best_model_name].iloc[0]
     
-    # Overfitting Check
-    train_mae_best = best_model_info["Train_MAE"]
-    val_mae_best = best_model_info["CV_Val_MAE"]
-    possible_overfitting = (val_mae_best - train_mae_best) > 3.5
-
-    # Feature Importance (Random Forest)
     rf_model = trained_models["Random Forest Regression"]
     rf_importances = rf_model.feature_importances_
     
@@ -132,7 +133,6 @@ def train_and_evaluate_models(df):
         "Importance_Pct": np.round(rf_importances * 100, 1)
     }).sort_values(by="Importance", ascending=False)
     
-    # Actual vs Predicted Test Dataframe
     y_best_pred = best_model_obj.predict(X_test_scaled)
     actual_vs_pred_df = pd.DataFrame({
         "Actual_Danger_Score": y_test,
@@ -140,7 +140,6 @@ def train_and_evaluate_models(df):
         "Absolute_Error": np.round(np.abs(y_test - y_best_pred), 1)
     })
     
-    # Save Model Artifacts with Joblib
     models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
     os.makedirs(models_dir, exist_ok=True)
     
@@ -154,10 +153,13 @@ def train_and_evaluate_models(df):
         "test_r2": best_model_info["Test_R2"],
         "cv_val_mae": best_model_info["CV_Val_MAE"],
         "train_mae": best_model_info["Train_MAE"],
-        "possible_overfitting": possible_overfitting,
         "available_features": available_features,
         "comparison_df": comparison_df,
-        "feature_importance_df": feat_imp_df
+        "feature_importance_df": feat_imp_df,
+        "train_records": len(train_df),
+        "test_records": len(test_df),
+        "train_years": train_years,
+        "test_years": test_years
     }
     
     joblib.dump(metrics_summary, os.path.join(models_dir, "model_metrics.pkl"))
